@@ -1,0 +1,140 @@
+Links:
+
+https://www.karelbemelmans.com/2017/01/deploying-a-hugo-website-to-amazon-s3-using-aws-codebuild/
+https://blog.cloudboost.io/automated-deployment-of-serverless-and-react-using-aws-codepipeline-e268bbb032e
+
+
+Implantando um site estático no Amazon S3 usando o AWS CodeBuild
+
+ AWS • Devops
+Há um mês, escrevi em blog sobre o uso de Bitbucket Pipelines como uma ferramenta de implantação para implantar meu site da Hugo na AWS S3 . Era uma configuração totalmente automatizada que implantava uma nova versão do site toda vez que eu enviava uma confirmação para a ramificação principal do repositório git.
+Ultimamente, tenho mudado mais coisas para a AWS, pois ter tudo na AWS facilita a integração de coisas, incluindo o meu blog Hugo. Deixe-me mostrar como eu configuro o processo de compilação na AWS.
+
+CodeCommit
+Primeiro, mudei meu repositório git do servidor Bitbucket público e gratuito para o AWS CodeCommit . Realmente não há nada de especial a dizer sobre isso: o CodeCommit é simplesmente git na AWS ( detalhes sobre preços )
+
+A única coisa que quero enfatizar, novamente, é que você não deve usar o usuário administrador para enviar por código, mas criar um novo usuário do IAM com acesso limitado, para que ele possa enviar apenas por código e nada mais. A página CodeCommit o guiará com isso, até o ponto de criar chaves SSH.
+
+A política gerenciada da AWS AWSCodeCommitFullAccessdeve ter todo o acesso necessário, não há necessidade de escrever sua própria política.
+
+CodeBuild
+Em segundo lugar, eu precisava de uma substituição para os Pipelines do Bitbucket: o AWS CodeBuild . Lançado em dezembro de 2016, o CodeBuild é quase exatamente o mesmo sistema de compilação que os Bitbucket Pipelines (e os modelos Travis CI e GitLab e muitos outros sistemas de compilação orientados pelo Docker) e há apenas uma coisa que você precisa para criar: um modelo de compilação .
+
+Aqui está o que eu usei buildspec.ymlpara criar e implantar meu blog Hugo:
+
+versão: 0.1
+
+variáveis ​​ambientais:
+  texto simples:
+    AWS_DEFAULT_REGION: "YOUR_AWS_REGION_CODE"
+    HUGO_VERSION: "0,17"
+    HUGO_SHA256: "f1467e204cc469b9ca6f17c0dc4da4a620643b6d9a50cb7dce2508aaf8fbc1ea"
+
+fases:
+  instalar:
+    comandos:
+      - curl -Ls https://github.com/spf13/hugo/releases/download/v${HUGO_VERSION}/hugo_${HUGO_VERSION}_Linux-64bit.tar.gz -o /tmp/hugo.tar.gz
+      - eco "$ {HUGO_SHA256} /tmp/hugo.tar.gz" | sha256sum -c -
+      - tar xf /tmp/hugo.tar.gz -C / tmp
+      - mv / tmp / hugo _ $ {HUGO_VERSION} _linux_amd64 / hugo _ $ {HUGO_VERSION} _linux_amd64 / usr / bin / hugo
+      - rm -rf / tmp / hugo *
+  construir:
+    comandos:
+      - hugo
+  post_build:
+    comandos:
+      - aws s3 sync --delete public s3: // BUCKETNAME --cache-control max-age = 3600
+A imagem do Docker que usei era a padrão, Ubuntu Linux 14.04pois não preciso de nenhum software personalizado durante o meu plano de construção.
+
+Para tarefas mais complexas, você pode fornecer sua própria imagem do Docker para executar o processo de compilação. Verifique se inclui a libc , caso contrário, a AWS não poderá executá-la. Infelizmente, isso excluirá a maioria das imagens baseadas em alpinos, mas para um processo de construção que provavelmente não deve ser um grande problema.
+
+Em vez de usar um usuário do IAM, fornecendo AWS_ACCESS_KEY_ID e AWS_SECRET_ACCESS_KEY no meu modelo de construção, usei a função CodeBuild IAM para definir meu acesso ao bucket do S3. O CodeBuild irá gerar essa função para você ao criar um plano de compilação, basta adicionar esta política personalizada do IAM a essa função:
+
+{
+    "Versão": "2012-10-17",
+    "Declaração": [
+        {
+            "Açao": [
+                "s3: lista *",
+                "s3: Coloque *",
+                "s3: DeleteObject"
+            ],
+            "Recurso": [
+                "arn: aws: s3 ::: BUCKETNAME",
+                "arn: aws: s3 ::: BUCKETNAME / *"
+            ],
+            "Efeito": "Permitir"
+        }
+    ]
+}
+Substitua BUCKETNAME pelo nome do seu bucket S3.
+
+Algumas observações
+No momento, a implantação é uma ação manual: faço logon no site do AWS CodeBuild e pressiono o Run buildbotão. O CodeBuild não tem uma opção fácil "Construir em novas confirmações", mas é claro que você pode usar o AWS Lambda para criar isso sozinho. Farei isso em breve no meu blog e depois atualizarei este post com o Lambda que usei.
+
+Se você procura um sistema completo de pipeline como o GoCD , o AWS CodePipeline é o que você precisa.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+O Serverless se tornou a nova maneira de implantar back-end escalável, econômico e completamente gerenciado. O React mudou a maneira como pensamos sobre aplicativos da Web e desenvolvimento de interface do usuário. Existem muitos recursos disponíveis na Internet, educando tanto em servidor quanto em reação. Esta postagem é exclusivamente sobre a construção de um pipeline de implantação para eles.
+O AWS Lambda está revolucionando a nuvem. Os desenvolvedores estão criando casos de uso interessantes diariamente com o Lambda. Tive a chance de projetar a arquitetura em nuvem para um aplicativo de comércio eletrônico. A pilha de tecnologia sendo nodeJS no back-end e reactJS no front-end. Decidimos implantar nosso aplicativo inteiro no lambda. Aqui está nossa arquitetura completa de nuvem :
+
+Arquitetura em nuvem sem servidor
+Planejando escrever uma postagem média separada sobre decisões de design , seleção e orquestração de vários componentes de nuvem da arquitetura acima. Fique atento à postagem. Como você pode ver, o aplicativo acima é totalmente compatível com o AWS Lambda. Vou parar de andar de um lado para o outro e entrar no pipeline de implantação automatizada.
+Nosso pipeline de implantação automatizada usa dois serviços de desenvolvimento da AWS, ou seja, CodeBuild e CodePipeline . Aqui está a arquitetura do nosso pipeline:
+
+Pipeline de implantação automatizada
+O AWS CodePipeline é um serviço de entrega contínua que você pode usar para modelar, visualizar e automatizar as etapas necessárias para liberar seu aplicativo.
+O pipeline consiste em etapas, como construir , testar e implantar . É muito fácil trabalhar com o codePipeline, onde precisamos configurar os estágios diretamente na interface do usuário. Aqui estão as várias etapas do nosso pipeline:
+
+Etapa 1 (origem): precisamos integrar nosso repositório de código ao pipeline. No nosso caso, é o github. É importante especificar a ramificação do repositório ao qual a construção e a implantação devem ocorrer. Nota: Qualquer nova confirmação na ramificação especificada iniciará o pipeline.
+Etapa 2 (aprovação): essa etapa é totalmente opcional. Eu recomendo adicioná-lo, pois precisamos ser cautelosos sobre nossa criação e implantação.
+A melhor prática é adicionar o estágio de aprovação apenas para a implantação da produção . Você pode eliminar esse estágio para preparação ou outros ambientes.
+As aprovações podem ser enviadas usando o serviço AWS SNS . Crie um tópico SNS navegando para o serviço SNS no console da AWS. Adicione o mailId do líder do projeto ou do aprovador como um assinante ao tópico criado. Aqui está uma captura de tela do nosso tópico do SNS:
+
+Tópico do SNS de aprovação
+Adicione o ARN do tópico ao estágio de aprovação do pipeline de código. Nota: O pipeline passa para o próximo estágio, um e somente quando a solicitação de construção é aprovada . Se rejeitado , o pipeline para. Aqui está a captura de tela da adição do tópico ARN ao estágio de aprovação:
+
+Configuração do estágio de aprovação
+Etapa 3 (Compilação e implantação): O AWS CodeBuild é o pré-requisito para esta etapa.
+O CodeBuild é um serviço de criação totalmente gerenciado que compila o código-fonte, executa testes e produz pacotes de software prontos para implantação.
+O CodeBuild espera que o arquivo buildspec.yml faça parte do código-fonte, ou seja, o ramo clonado. Ele cria o projeto com base nas instruções escritas no arquivo. Existem algumas convenções a serem seguidas ao escrever o arquivo buildspec.yml . Aqui está o conteúdo do arquivo:
+
+Os comandos acima serão executados na ordem seqüencial. Você pode separar os comandos com base nas fases: instalação , pré- construção , construção e pós- construção . Nota: Certifique-se de especificar a versão: 0.2 como a primeira linha do arquivo, pois a versão 0.1 segue uma maneira diferente de executar a construção. Leia mais sobre isso aqui . Deixe-me guiá-lo pelo arquivo acima:
+Fase de instalação: O Yarn é usado como gerenciador de pacotes para o nodeJS e o reactJS. Portanto, instalando o fio usando o apt-get. Os lambdas são implantados usando a estrutura sem servidor , instalando-o globalmente usando fios. Além disso, as dependências de reagir e sem servidor estão instaladas.
+Fase pré-construção: você pode usar esta fase para executar alguns comandos ou executar algumas ações antes da construção. Como ambos, reagem e sem servidor, têm arquivos de configuração associados a eles, estou usando-o para baixar esses arquivos do bucket S3 privado. Essa fase pode ser pensada como uma fase de preparação para construir e implantar.
+Fase de construção: a linha no: 29 agrupa a reação e envia o pacote de reação e outros ativos estáticos para o bucket S3, onde está hospedado. A linha no: 32 implementa o lambda e o APIGateway usando a estrutura sem servidor.
+Nota: Lance erros para o processo em execução, quando ocorrer um erro no processo de construção. Isso interromperá o pipeline e, eventualmente, a construção falhará. A compilação deve falhar em caso de código de buggy. Portanto, não tente falhar com segurança no processo de compilação.
+Normalmente, o código será criado, testado no codeBuild e implantado usando um serviço diferente chamado codeDeploy . É usado para implantações tradicionais na instância do EC2, como implantação azul esverdeada e no local . No nosso caso, como não implantamos no EC2, a compilação e a implantação são feitas no codeBuild.
+O codeBuild requer configurações como runTime , OS, tipo de instância de computação e variáveis ​​de ambiente . Depois de configurado, adicione o projeto codeBuild ao estágio de construção do pipeline. Uma vez adicionado, concluímos nossa implantação automatizada. Agora, sempre que um novo commit acontece no github, o pipeline é acionado. No final do pipeline, o front-end e o back-end são implantados com novas versões.
+Notificações de compilação: agora que temos o pipeline no lugar, mas como sabemos se a compilação é bem - sucedida ou falha ? O CodeBuild possui eventos cloudWatch para vários eventos, como a construção bem - sucedida e a construção falhou . Podemos aproveitar esses eventos para nos notificar em caso de falha na compilação. Aqui está a configuração das notificações de compilação:
