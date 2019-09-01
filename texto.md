@@ -4,6 +4,7 @@ https://www.karelbemelmans.com/2017/01/deploying-a-hugo-website-to-amazon-s3-usi
 https://blog.cloudboost.io/automated-deployment-of-serverless-and-react-using-aws-codepipeline-e268bbb032e
 https://medium.com/@hzburki.hzb/automate-static-site-deployment-on-s3-with-aws-codebuild-8b2546a360df
 https://gist.github.com/bradwestfall/b5b0e450015dbc9b4e56e5f398df48ff
+http://cloudawus.com/tag/buildspec-yml/
 
 # S3 Static Sites
 
