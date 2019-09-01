@@ -5,16 +5,16 @@ https://blog.cloudboost.io/automated-deployment-of-serverless-and-react-using-aw
 https://medium.com/@hzburki.hzb/automate-static-site-deployment-on-s3-with-aws-codebuild-8b2546a360df
 https://gist.github.com/bradwestfall/b5b0e450015dbc9b4e56e5f398df48ff
 
-# S3 Sites estáticos
+# S3 Static Sites
 
-O que isso cobrirá
-- Hospede um site estático no S3
-- Redirecione `www.website.com` para` website.com`
-- O site pode ser um SPA (exigindo que todas as solicitações retornem `index.html`)
-- Certificados SSL gratuitos da AWS
-- Implantação com invalidação de CDN
+What this will cover
+- Host a static website at S3
+- Redirect `www.website.com` to `website.com`
+- Website can be an SPA (requiring all requests to return `index.html`)
+- Free AWS SSL certs
+- Deployment with CDN invalidation
 
-## Recursos
+## Resources
 - https://stormpath.com/blog/ultimate-guide-deploying-static-site-aws
 - https://miketabor.com/host-static-website-using-aws-s3/
 - http://www.mycowsworld.com/blog/2013/07/29/setting-up-a-godaddy-domain-name-with-amazon-web-services.html
@@ -22,190 +22,190 @@ O que isso cobrirá
 
 ## S3 Bucket
 
-- Crie um bucket S3 com o nome exato do nome do domínio, por exemplo, `website.com`. 
-- Em ** Propriedades **, clique na seção Site estático.
-  - Clique em ** Use este intervalo para hospedar um site ** e insira `index.html` no campo ** Index Document **.
-  - Não insira mais nada neste formulário.
-  - Isso criará um "ponto final" na mesma tela semelhante a `http: // website.com.s3-website-us-east-1.amazonaws.com`.
-- Em seguida, clique na guia ** Permissões ** e, em seguida, ** Política de bucket **. Digite esta política:
+- Create an S3 bucket named exactly after the domain name, for example `website.com`. 
+- In **Properties**, click the Static Website section.
+  - Click **Use this bucket to host a website** and enter `index.html` into **Index Document** field.
+  - Don't enter anything else in this form.
+  - This will create an "endpoint" on the same screen similar to `http://website.com.s3-website-us-east-1.amazonaws.com`.
+- Then click on **Permissions** tab, then **Bucket Policy**. Enter this policy:
 
-`` json
+```json
 {
-    "Versão": "17/10/2008",
-    "Declaração": [
+    "Version": "2008-10-17",
+    "Statement": [
         {
             "Sid": "AllowPublicRead",
-            "Efeito": "Permitir",
-            "Diretor": {
+            "Effect": "Allow",
+            "Principal": {
                 "AWS": "*"
-            }
-            "Ação": "s3: GetObject",
-            "Recurso": "arn: aws: s3 ::: BUCKET_NAME / *"
+            },
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::BUCKET_NAME/*"
         }
     ]
 }
-`` ``
+```
 
-> Certifique-se de substituir `BUCKET_NAME` pelo seu.
+> Be sure to replace `BUCKET_NAME` with yours.
 
-> Nota: A nomeação do bucket não precisa ser exatamente o nome do domínio. Eu li isso em vários artigos que precisava ser, mas não precisa. Se estiver usando domínios curinga na AWS, li que não podemos ter pontos no nome do domínio ao usar domínios curinga. Portanto, saiba que você pode nomear o intervalo de qualquer maneira, mas usar pontos funciona se não estiver usando domínios curinga
+> Note: Naming the bucket doesn't have to be exactly the domain name. I read that in several articles that it needed to be, but it doesn't. If using wildcard domains with AWS, I've read that we can't have dots in the domain name when using wildcard domains. So just know that you can name the bucket whatever, but using dots does work if not using wildcard domains
 
-O upload de um `index.html` deve nos permitir visitar o" ponto final "
+Uploading an `index.html` should allow us to visit the "endpoint"
 
 ## CloudFront
 
-- Vá para a seção CloudFront e clique em ** Criar distribuição ** e crie para ** Web **, não RTMP.
-- Em ** Nome de Domínio de Origem **, cole o "ponto final" criado anteriormente no S3 (sem a parte `http: //`). Observe que, quando você clicar nesse campo, ele funcionará como um menu suspenso com opções para seus buckets existentes. Eu acho que você pode simplesmente selecionar um desses dois, que é uma lista válida dos seus buckets S3.
-- A ordem destas instruções pressupõe que os certificados SSL ainda não estejam configurados. Portanto, não faça nada com as configurações relacionadas ao SSL
-- Selecione "yes" para ** Compactar objetos automaticamente **.
-- Em ** Nomes de Domínio Alternativos (CNAMEs) **, coloque os nomes de domínio que você deseja corresponder a este intervalo. Coloque cada um em sua própria linha ** OU ** separados por vírgula. A razão pela qual você pode ter dois ou mais é mais ou menos assim: `mywebsite.com` e` www.mywebsite.com`. O campo é chamado "Nomes de Domínio Alternativos" porque a AWS terá um nome de domínio específico do aws para a CDN, mas você não deseja usá-lo, por isso, deverá colocar seus domínios personalizados e usar o Route 53 (próximo seção) para apontar domínios para a CDN.
-- Em ** Objeto raiz padrão **, digite `index.html`.
-- Crio. A próxima tela mostrará distribuições em forma de tabela, a que acabamos de fazer estará "em andamento" por alguns minutos
+- Go to the CloudFront section and click **Create Distribution** and then create for **Web**, not RTMP.
+- In **Origin Domain Name**, paste the "endpoint" previously created in S3 (without the `http://` part). Note that when you click on this field it will act like a dropdown with options to your existing buckets. I think you can just select one of those two which is a valid list of your S3 buckets.
+- The order of these instructions assume SSL certificates are not setup yet. So don't do anything with settings regarding SSL
+- Select "yes" for **Compress Objects Automatically**.
+- In **Alternate Domain Names (CNAMEs)**, put the domain names which you want to correspond to this bucket. Put each on their own line **OR** separated by comma. The reason why you may have two or more is something like this: `mywebsite.com` and `www.mywebsite.com`. The field is called "Alternative Domain Names" because AWS will have an aws-specific domain name for the CDN, but you don't want to use that so you'll want to put in your custom domains and then use Route 53 (next section) to point domains to the CDN.
+- In **Default Root Object**, type `index.html`.
+- Create. The next screen will show distributions in table form, the one we just made will be "in progress" for a few minutes
 
-A distribuição terá um nome de domínio como `dpo155j0y52ps.cloudfront.net`. Isso é importante para o DNS (veja abaixo). Então copie-o de alguma forma.
+The distribution will have a domain name like `dpo155j0y52ps.cloudfront.net`. This is important for DNS (see below). So copy it somehwere.
   
-## Rota 53
+## Route 53
 
-Essas instruções de DNS assumem que seu DNS está hospedado na AWS. ** Isso não significa ** que você precisa comprar um domínio na AWS, apenas significa que quando você compra um domínio em algum lugar como Google ou GoDaddy, lá é necessário apontar os registros NS para a AWS para permitir que a AWS gerencie as peças do registro DNS. Mas primeiro, na AWS, é onde você cria a "Zona hospedada", onde é possível criar os valores de NS que eventualmente serão dados ao Google ou ao GoDaddy etc. Não sei como isso é diferente se você comprar seu domínio na AWS (Mas, novamente, nunca compro domínios no mesmo local que hospedo)
+These DNS instructions assume your DNS is hosted at AWS. **This does not mean** you have to buy a domain at AWS, it just means that when you buy a domain at somewhere like Google or GoDaddy, over there you need to point NS records to AWS to allow AWS to manage the parts of the DNS record. But first, at AWS is where you create the "Hosted Zone" which is where you create the NS values to eventually give to Google or GoDaddy, etc. I don't know how any of this is different if you buy your domain at AWS (But then again I never buy domains at the same place I host)
 
-- Clique em ** Zonas hospedadas **
-- Crie uma nova zona: use o nome do domínio (`mywebsite.com` sem subdomínio) para a zona. Observe que cada nome de domínio terá uma zona, todos os subdomínios pertencem à mesma zona.
-- Isso deve criar registros NS, como:
+- Click **Hosted Zones**
+- Create a new Zone: Use the domain name (`mywebsite.com` without sub domain) for zone. Note that each domain name will get one zone, sub domains all belong to the same zone.
+- This should create NS records such as:
 
-`` ``
+```
 ns-1208.awsdns-23.org. 
 ns-2016.awsdns-60.co.uk. 
 ns-642.awsdns-16.net. 
 ns-243.awsdns-30.com.
-`` ``
+```
 
-- Os registros NS podem ser usados ​​para direcionar o gerenciamento de DNS de outro registrador de domínio para o AWS Route 53
-- Clique em ** Criar conjunto de registros ** para criar um registro `A`.
-  - Este será o registro que aponta `mywebsite.com 'para o CloudFront.
-  - Para o ** nome **, não insira nenhum valor
-  - Altere ** Alias ​​** para Sim
-  - Cole o domínio CloutFront no campo ** Alias ​​**
-    - Isso deve se parecer com `[some-random-number] .couldfront.net`. Você pode fazer isso clicando na distribuição do CloudFront e, na guia Geral, há um rótulo "Nome de domínio".
-  - Clique em Criar conjunto de registros
-- Crie outro registro `A` para o redirecionamento` www`
-  - Siga as mesmas etapas para o registro anterior `A`, mas digite` www` para ** nome ** e use o mesmo domínio do CloudFront. Mas observe que isso ocorre porque queremos que `www.mywebsite.com` e` mywebsite.com` aponte para o mesmo intervalo (e, portanto, o mesmo domínio do CloudFront). Suponho que você criaria um novo balde e uma nova distrubuição do CloudFront (com um novo domínio CF) se quisesse um segundo projeto em `app.mywebsite.com '. Isso pode ser comum se o aplicativo for um aplicativo React que seja um código completamente separado do site da "página inicial", que pode ser de um gerador de site estático ou algo assim.
+- The NS records can be used to point DNS management from other domain registrar to AWS Route 53
+- Click **Create Record Set** to create an `A` record.
+  - This will be the record that points `mywebsite.com` to CloudFront.
+  - For the **name**, enter no value
+  - Change **Alias** to Yes
+  - Paste the CloutFront domain in the **Alias** field
+    - This should look like `[some-random-number].couldfront.net`. You can get this by clicking your CloudFront distribution and in the General tab there is a "Domain Name" label.
+  - Click Create Record Set
+- Create another `A` record for the `www` redirect
+  - Follow the same steps for the previous `A` record, but enter `www` for **name** and use the same CloudFront domain. But note this is because we want `www.mywebsite.com` and `mywebsite.com` to point to the same bucket (and therefore the same CloudFront domain). I suppose you would make a whole new bucket and a whole new CloudFront distrubution (with a new CF domain) if you wanted a second project at `app.mywebsite.com`. This might be common if you app is a React app that is completly separate code from your "home page" website which might be from a static site generator or something.
 
 ## HTTPS
 
-No Console da AWS, acesse ** Certificate Manager ** e solicite um certificado para o domínio e todos os subdomínios. Seremos obrigados a verificar o certificado por email ou DNS. Ao verificar por e-mail, a AWS procurará as informações públicas do proprietário do DNS e usará até três e-mails que encontrar lá (se as informações de propriedade do domínio forem públicas). Mas, mesmo que não seja público, a AWS também os usará (que você não pode escolher)
+In the AWS Console, go to **Certificate Manager** and request a cert for domain and all sub domains. We will be required to verify certificate via email or DNS. If verifying by email, AWS will look up the public DNS owner information and use up to three emails it finds there (if your domain ownership info is public). But even if it's not public, AWS will also use these (that you don't get to choose from)
 
-- `administrador @ mywebsite.com`
-- `hostmaster @ mywebsite.com`
-- `postmaster @ mywebsite.com`
-- `webmaster @ mywebsite.com`
-- `admin @ mywebsite.com`
+- `administrator@mywebsite.com`
+- `hostmaster@mywebsite.com`
+- `postmaster@mywebsite.com`
+- `webmaster@mywebsite.com`
+- `admin@mywebsite.com`
 
-Se a sua empresa usa o "webmaster @", não se preocupe, pois seu aplicativo provavelmente tem 1000 anos.
+If your company uses "webmaster@", hats off to you, because your app is probably 1000 years old.
 
-** Para TLDs .io **: http://docs.aws.amazon.com/acm/latest/userguide/troubleshoot-iodomains.html
+**For .io TLDs**: http://docs.aws.amazon.com/acm/latest/userguide/troubleshoot-iodomains.html
 
-Se você optar por verificar via DNS, a AWS solicitará que você adicione alguns registros CNAME ao DNS do Route 53, mas o mais interessante é que existe um botão de atalho para fazê-lo (para cada domínio e subdomínio) no Gerenciador de Certificados seção.
+If you choose to verify via DNS, AWS will ask you to add some CNAME records to your Route 53 DNS, but the nice thing is that there is a shortcut button to do so (for each domain and sub domain) from within the Certificate Manager section.
 
-Após a verificação e o certificado ser "emitido", podemos voltar ao CloudFont para editar nossa distribuição para este domínio:
+After the verification is done and the cert is "issued", we can go back into CloudFont to edit our distribution for this domain:
 
-- Clique na distribuição e, na próxima página (na guia Geral), clique em ** Editar **
-- Marque a caixa para ** Certificado SSL personalizado **
-- Selecione nosso certificado e salve. Observe que o que parece um campo de texto é realmente um menu suspenso quando você clica nele para escolher seu certificado
-- Quando terminar o formulário, clique na guia ** Comportamentos ** e edite o único registro que deve estar lá
-- Selecione ** Redirecionar HTTP para HTTPS **. Clique em Save
+- Click the distribution and on the next page (in the General tab), click **Edit**
+- Check the box for **Custom SSL Certificate**
+- Select our cert and save. Note that what looks like a text field is really a dropdown menu once you click it to choose your certificate
+- When done with the form, click the **Behaviors** tab and edit the only record that should be there
+- Select **Redirect HTTP to HTTPS**. Click Save
 
 ## SPA
 
-Se o site for um SPA, precisamos garantir que todas as solicitações ao servidor (neste caso, S3) retornem algo, mesmo que não exista arquivo. Isso ocorre porque os SPAs, como o React (com o React Router), precisam da página `index.html` para todas as solicitações; depois, coisas como as páginas" não encontradas "são tratadas no front-end.
+If the website is an SPA, then we need to make sure all requests to the server (S3 in this case) return something even if no file exists. This is becuase SPAs like React (with React Router) need the `index.html` page for every requests, then things like "not found" pages are handled in the front-end.
 
-Vá para o CloudFront e clique na distribuição à qual deseja aplicar essas configurações do SPA. Clique na guia ** Páginas de erro ** e adicione uma nova página de erro. Preencha o formulário com estes campos:
+Go to CloudFront and click the distribution you want to apply these SPA settings to. Click the **Error Pages** tab and add a new error page. Fill the form with these fields:
 
-- ** Código de erro HTTP **: 404
-- ** TTL **: 0
-- ** Resposta de erro personalizada **: Sim
-- ** Caminho da página de resposta **: `/ index.html`
-- ** Código de resposta HTTP **: 200
+- **HTTP Error Code**: 404
+- **TTL**: 0
+- **Custom Error Response**: Yes
+- **Response Page Path**: `/index.html`
+- **HTTP Response Code**: 200
 
-## Desdobramento, desenvolvimento
+## Deployment
 
-Para a implantação, precisamos considerar que os arquivos na CDN do CloudFront não devem mudar. Se formos fazer o upload de novos arquivos para o S3, eles não serão implantados nos servidores de borda da CDN e, portanto, não atualizarão o site. [Leia mais] (http://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/ReplacingObjectsSameName.html).
+For deployment, we need to consider that files in the CloudFront CDN are not meant to change. If we were to upload new files to S3, they would not be deployed to the CDN's edge servers and therefore would not update the website. [Read More](http://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/ReplacingObjectsSameName.html).
 
-Para invalidar arquivos na CDN, precisamos usar o recurso ** invalidations ** do CloudFront: [Leia mais] (http://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html).
+To invalidate files on the CDN we'll need to use CloudFront's **invalidations** feature: [Read More](http://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html).
 
-No console da AWS, no gerenciamento de uma distribuição do CloudFront, há uma guia para ** Invalidações **. Poderíamos criar manualmente uma invalidação (com o valor de `/ *`) para invalidar todos os arquivos S3. Observe que os registros de invalidação aqui são invalidações únicas e toda vez que implantarmos novos arquivos, precisaremos fazer uma nova invalidação.
+In the AWS console, in the CloudFront management of a distribution, there is a tab for **Invalidations**. We could manually create an invalidation (with the value of `/*`) to invalidate all S3 files. Note that invalidation records here are one-time invalidations and every time we deploy new files, we will need to make a new invalidation.
 
-Para implantar com invalidações, precisaremos [instalar o AWS-CLI] (https://aws.amazon.com/cli/) primeiro. Também supomos que você tenha um usuário IAM da AWS com uma chave de acesso e uma chave de acesso secreta.
+To deploy with invalidations, we will need to [install AWS-CLI](https://aws.amazon.com/cli/) first. We also assume you have an IAM user from AWS with an Access Key and Secret Access Key.
 
-Para testar a instalação, faça:
+To test installation, do:
 
-`` sh
+```sh
 aws --version
-`` ``
+```
 
-Configure o aws-cli:
+Configure aws-cli:
 
-`` sh
+```sh
 aws configure --profile PICK_A_PROFILE_NAME
-`` ``
+```
 
-> Observe que o uso de "perfis" para configurar a AWS-CLI é provavelmente o melhor, pois você pode usar a CLI para gerenciar várias contas da AWS em algum momento. Certifique-se de trocar `PICK_A_PROFILE_NAME` pela sua escolha de nome (pode ser qualquer coisa).
+> Note that using "profiles" to configure AWS-CLI is probably best since you might want to use the CLI to manage multiple AWS accounts at some point. Be sure to swap out `PICK_A_PROFILE_NAME` for your name choice (can be anything).
 
-Digite estes valores:
-`` ``
-ID da chave de acesso da AWS [Nenhum]: [sua chave de acesso]
-Chave de acesso secreta da AWS [Nenhuma]: [Sua chave de acesso secreta]
-Nome da região padrão [Nenhum]: us-east-1
-Formato de saída padrão [Nenhum]: json
-`` ``
+Enter these values:
+```
+AWS Access Key ID [None]: [Your Access Key]
+AWS Secret Access Key [None]: [Your Secret Access Key]
+Default region name [None]: us-east-1
+Default output format [None]: json
+```
 
-Isso salvará suas entradas em `~ / .aws / credenciais`. Observe que você precisa inserir sua região correta para o seu material da AWS. Eu usei `us-east-1`, mas certifique-se de usar o correto para você. Observe também que você pode ter respostas em `text` em vez de` json` se desejar
+This will save your entries at `~/.aws/credentials`. Note that you need to enter your correct region for your AWS stuff. I used `us-east-1`, but make sure to use the correct one for you. Also note that you can have responses in `text` instead of `json` if you want
 
-Você pode omitir as duas últimas perguntas para região e formato, se desejar configurar um padrão para o seu computador (que todos os perfis usarão). O perfil padrão está localizado em `~ / .aws / config`. Se você omitir a região e o formato do seu perfil, verifique se eles existem no seu `~ / .aws / config` como:
+You can ommit the last two questions for region and format if you want to set up a default for your computer (that all profiles will use). The default profile is located at `~/.aws/config`. If you omit the region and format from your profile, be sure they exist in your `~/.aws/config` as:
 
-`` sh
-[padrão]
+```sh
+[default]
 output = json
-região = us-leste-1
-`` ``
+region = us-east-1
+```
 
-Agora, como precisamos executar alguns comandos do CloudFront que são "experimentais", precisamos fazer:
+Now, since we'll need to do some CloudFront commands which are "experimental", we need to do:
 
-`` sh
+```sh
 aws configure set preview.cloudfront true
-`` ``
+```
 
-Isso resultará em mais registros em `~ / .aws / config`.
+This will result in more records at `~/.aws/config`.
 
-Devemos estar configurados agora para dest uma implantação. Corre:
+We should be setup now to dest a deployment. Run: 
 
-`` sh
-aws s3 sync --acl public-read --profile YOUR_PROFILE_NAME - exclua build / s3: // BUCKET_NAME
-`` ``
+```sh
+aws s3 sync --acl public-read --profile YOUR_PROFILE_NAME --delete build/ s3://BUCKET_NAME
+```
 
-- Obviamente, substitua `YOUR_PROFILE_NAME` e` BUCKET_NAME` pelo seu. Isso também assume que a pasta que você deseja enviar é `build '.
-- Este comando será
-  - Verifique se todos os novos arquivos enviados são públicos (`--acl public-read`)
-  - Verifique se estamos usando suas credenciais em seu perfil local da AWS (`--profile YOUR_PROFILE_NAME`)
-  - Remova todos os objetos S3 existentes que não existem localmente (`--delete`)
+- Obviously replace `YOUR_PROFILE_NAME` and `BUCKET_NAME` with yours. Also this assumes the folder you want to upload is `build`.
+- This command will
+  - Ensure all new files uploaded are public (`--acl public-read`)
+  - Ensure we're using your credentials from your local AWS profile (`--profile YOUR_PROFILE_NAME`)
+  - Remove any existing S3 objects that don't exist locally (`--delete`)
 
-Após a implantação ser verificada e bem-sucedida, precisamos invalidar:
+After deployment is verified and successful, we need to invalidate:
 
-`` sh
-aws cloudfront --profile YOUR_PROFILE_NAME create-invalidation - id da distribuição YOUR_DISTRIBUTION_ID - caminhos '/ *'
-`` ``
+```sh
+aws cloudfront --profile YOUR_PROFILE_NAME create-invalidation --distribution-id YOUR_DISTRIBUTION_ID --paths '/*'
+```
 
-- Obviamente, substitua `YOUR_PROFILE_NAME` e` YOUR_DISTRIBUTION_ID` pela sua. Observe que seu ID de distribuição pode ser encontrado na seção CloudFront do console da AWS.
-- Se a invalidação funcionou, você poderá ver um registro na guia ** Invalidações ** depois de clicar em sua distribuição.
+- Obviously replace `YOUR_PROFILE_NAME` and `YOUR_DISTRIBUTION_ID` with yours. Note that your Distribution ID can be found in the CloudFront seciton of AWS console.
+- If the invalidation worked, you'll be able to see a record of it in the **Invalidations** tab after clicking on your distribution.
 
-Para facilitar tudo, adicione ao `package.json`:
+To make it all easier, add to `package.json`:
 
-`` json
+```json
   "scripts": {
-    "deploy": "aws s3 sync --acl public-read --profile XYZ - exclua build / s3: // XYX && npm run invalidate",
-    "invalidate": "aws cloudfront --profile XYZ create-invalidation --distribution-id XYZ --paths '/ *'"
-  }
-`` ``
+    "deploy": "aws s3 sync --acl public-read --profile XYZ --delete build/ s3://XYX && npm run invalidate",
+    "invalidate": "aws cloudfront --profile XYZ create-invalidation --distribution-id XYZ --paths '/*'"
+  },
+```
 
-`XYZ` é para todas as peças que precisam ser substituídas. Agora você pode executar o `npm run deploy`, que irá implantar e invalidar
+`XYZ` is for all the parts that need to be replaced. Now you can run `npm run deploy` which will deploy then invalidate
 
-Felicidades!
+Cheers!
